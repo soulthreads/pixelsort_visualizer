@@ -7,6 +7,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <SDL.h>
+#include "pulse_input.h"
 
 cv::Mat gradient(const cv::Mat& source)
 {
@@ -105,6 +106,7 @@ int main(int argc, char* argv[])
     const char* keys =
         "{help h |      | print this message}"
         "{@image |<none>| path to image     }"
+        "{@source|<none>| pulseaudio source }"
         "{r      |1     | rotate            }"
         "{key    |h     | sorting key       }"
     ;
@@ -115,6 +117,7 @@ int main(int argc, char* argv[])
         return 0;
     }
     std::string filename = parser.get<std::string>(0);
+    std::string source = parser.get<std::string>(1);
     int rotate = parser.get<int>("r");
     std::string key = parser.get<std::string>("key");
     int key_index = 0;
@@ -204,6 +207,8 @@ int main(int argc, char* argv[])
         out_rect.y = 0;
     }
 
+    Input input(source);
+    input.start();
 
     cv::Mat result;
     while (true)
@@ -223,8 +228,7 @@ int main(int argc, char* argv[])
         SDL_RenderCopy(renderer, texture, nullptr, &out_rect);
         SDL_RenderPresent(renderer);
 
-        int high = (sin(SDL_GetTicks() / 1000.0) + 1.0) / 2.0 * 256;
-        pixel_sort(img_hsv, result, 0, high, rotate, key_index);
+        pixel_sort(img_hsv, result, 0, input.level(), rotate, key_index);
         cv::cvtColor(result, result, cv::COLOR_HLS2BGR_FULL);
 
         void* data = nullptr;
@@ -234,6 +238,8 @@ int main(int argc, char* argv[])
         result.copyTo(tex_mat);
         SDL_UnlockTexture(texture);
     }
+
+    input.stop();
 
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
